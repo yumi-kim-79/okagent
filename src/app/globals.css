@@ -1,26 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #f7f6f2;
+  --ink: #1d1f1e;
+  --muted: #5f6460;
+  --rule: #d6d8d2;
+  --approve: #1f7a4d;
+  --reject: #b8322a;
+  --stamp: #c22a1e;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-rule: var(--rule);
+  --color-approve: var(--approve);
+  --color-reject: var(--reject);
+  --color-stamp: var(--stamp);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+html { background: var(--paper); color: var(--ink); font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; -webkit-font-smoothing: antialiased; word-break: keep-all; }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* 결재란 — the approval box printed on Korean office documents */
+.gyeoljae { border: 1.5px solid var(--ink); display: grid; grid-template-columns: 1fr 1fr; }
+.gyeoljae > div { padding: 6px 10px; border-right: 1.5px solid var(--ink); min-height: 64px; }
+.gyeoljae > div:last-child { border-right: 0; }
+.gyeoljae .label { font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--rule); margin: -6px -10px 6px; padding: 3px 10px; }
+
+.seal { width: 44px; height: 44px; border: 2.5px solid var(--stamp); color: var(--stamp); border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; transform: rotate(-12deg); mask-image: radial-gradient(circle at 40% 35%, #000 55%, rgba(0,0,0,.7) 100%); }
+@media (prefers-reduced-motion: no-preference) {
+  .seal-in { animation: seal-in 360ms cubic-bezier(.2,.9,.3,1.25) both; }
+  @keyframes seal-in { from { transform: rotate(-12deg) scale(1.8); opacity: 0 } to { transform: rotate(-12deg) scale(1); opacity: 1 } }
 }
+button:focus-visible, a:focus-visible, textarea:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
