@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OK Agent — 에이전트 승인 게이트
 
-## Getting Started
+AI 에이전트가 **돈이 나가거나 되돌릴 수 없는 작업**(재고 변경, 주문 처리, 송금, 글 게시 …)을 하기 전에
+사람에게 한 번 묻고, 사람은 휴대폰에서 **승인 / 거부** 버튼 하나로 답하는 서비스입니다.
 
-First, run the development server:
+- 에이전트 쪽: HTTP API 한 번(`POST /api/v1/requests`) → 응답의 `approveUrl`을 사람에게 전달하거나, 자동 알림(웹훅)으로 전송
+- 사람 쪽: 링크 열기 → 내용 확인 → 승인/거부 (계정·로그인 없음, 링크 자체가 1회용 토큰)
+- 에이전트는 `GET /api/v1/requests/{id}`로 폴링하거나, `callbackUrl`로 결과를 받습니다
+- MCP 서버에서는 `@appmonster/approval`의 `approverFromEnv()`를 `approveWrite` 훅에 꽂으면 끝 (kmcp의 naver-commerce / cafe24 가 이미 이 방식)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## API
+
+인증: `Authorization: Bearer <API_KEY>` (키는 `OKAGENT_API_KEYS` 환경변수, `key:user` 쌍을 콤마로 구분)
+
+### `POST /api/v1/requests` — 승인 요청 만들기
+
+```json
+{
+  "title": "네이버 재고 변경: 블랙 L 12 → 0",
+  "description": "품절 처리 요청. 주문 3건 대기 중",
+  "action": "naver_update_stock",
+  "payload": { "originProductNo": 123, "stockQuantity": 0 },
+  "amount": 0,
+  "currency": "KRW",
+  "source": "naver-commerce",
+  "expiresIn": 600,
+  "callbackUrl": "https://agent.example.com/hooks/okagent"
+}
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+응답 `201`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```json
+{ "id": "req_…", "status": "pending", "approveUrl": "https://okagent.app/r/req_…?t=…", "expiresAt": "…" }
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 필드 | 설명 |
+|---|---|
+| `title` (필수) | 사람이 한 줄로 읽을 요약 (≤120자) |
+| `action` (필수) | 실행될 도구/작업 이름 (≤120자) |
+| `payload` | 실제 인자. 승인 페이지에서 "인자 보기"로 편쳐 확인 |
+| `amount`, `currency` | 금액이 있으면 크게 표시 (기본 KRW) |
+| `source` | 요청한 에이전트/서버 이름 |
+| `expiresIn` | 초. 기본 600, 최대 7일. 지나면 자동 `expired` |
+| `callbackUrl` | 결정되면 `{id,status,note,decidedAt,action}`를 POST |
 
-## Learn More
+### `GET /api/v1/requests/{id}` — 상태 조회 (폴링)
 
-To learn more about Next.js, take a look at the following resources:
+`status`: `pending | approved | rejected | expired`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### `GET /api/v1/requests` — 내 대기 중 요청 목록
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### `POST /api/v1/requests/{id}/decide` — 승인 페이지가 호출 (링크 토큰 인증)
 
-## Deploy on Vercel
+```json
+{ "token": "…", "decision": "approved", "note": "수량 확인함" }
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+이미 결정된 요청이면 `409`, 토큰이 틀리면 `404`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 환경변수
+
+| 변수 | 필수 | 설명 |
+|---|---|---|
+| `OKAGENT_API_KEYS` | ✅ | `키:사용자,키2:사용자2` |
+| `OKAGENT_BASE_URL` | ✅ | 승인 링크의 도메인 (`https://okagent.app`) |
+| `DATABASE_URL` | 운영 ✅ | Postgres (Neon 등). 없으면 메모리 저장(개발용, 서버 재시작 시 소실) |
+| `OKAGENT_NOTIFY_WEBHOOK` | 선택 | 새 요청마다 JSON POST. Slack Incoming Webhook URL 그대로 사용 가능 |
+
+## 로컬 실행
+
+```bash
+pnpm install
+OKAGENT_API_KEYS=dev-key:yusung pnpm dev
+# 다른 터미널
+curl -s -X POST localhost:3000/api/v1/requests -H 'Authorization: Bearer dev-key' -H 'Content-Type: application/json' \
+  -d '{"title":"테스트 승인","action":"demo","amount":15000}'
+# → approveUrl 을 브라우저로 열어 승인/거부
+```
+
+## 배포
+
+[DEPLOY.md](./DEPLOY.md) — Vercel + Neon, 10분.
+
+## 로드맵
+
+- [ ] 카카오 알림톡 / 앱 푸시 채널 (현재: 웹훅)
+- [ ] 대시보드: 지난 승인 내역, 자동 승인 규칙(금액 ≤ N원이면 자동 OK)
+- [ ] 사용자별 API 키 발급 UI (현재: 환경변수)
+- [ ] React Native 앱 (잠금화면 알림에서 바로 승인)
