@@ -38,7 +38,7 @@ AI 에이전트가 **돈이 나가거나 되돌릴 수 없는 작업**(재고 �
 |---|---|
 | `title` (필수) | 사람이 한 줄로 읽을 요약 (≤120자) |
 | `action` (필수) | 실행될 도구/작업 이름 (≤120자) |
-| `payload` | 실제 인자. 승인 페이지에서 "인자 보기"로 편쳐 확인 |
+| `payload` | 실제 인자. 승인 페이지에서 "인자 보기"로 펼쳐 확인 |
 | `amount`, `currency` | 금액이 있으면 크게 표시 (기본 KRW) |
 | `source` | 요청한 에이전트/서버 이름 |
 | `expiresIn` | 초. 기본 600, 최대 7일. 지나면 자동 `expired` |
@@ -66,6 +66,7 @@ AI 에이전트가 **돈이 나가거나 되돌릴 수 없는 작업**(재고 �
 | `OKAGENT_BASE_URL` | ✅ | 승인 링크의 도메인 (`https://okagent.app`) |
 | `DATABASE_URL` | 운영 ✅ | Postgres (Neon 등). 없으면 메모리 저장(개발용, 서버 재시작 시 소실) |
 | `OKAGENT_NOTIFY_WEBHOOK` | 선택 | 새 요청마다 JSON POST. Slack Incoming Webhook URL 그대로 사용 가능 |
+| `OKAGENT_KAKAO_REST_API_KEY` + `OKAGENT_KAKAO_REFRESH_TOKEN` | 선택 | 카카오톡 "나와의 채팅"으로 승인 링크 전송. `npx @appmonster/mcp-kakao auth` 로 받은 refresh token (앱에 Client Secret을 켰다면 `OKAGENT_KAKAO_CLIENT_SECRET`도) |
 
 ## 로컬 실행
 
@@ -84,7 +85,8 @@ curl -s -X POST localhost:3000/api/v1/requests -H 'Authorization: Bearer dev-key
 
 ## 로드맵
 
-- [ ] 카카오 알림톡 / 앱 푸시 채널 (현재: 웹훅)
+- [x] 카카오톡 나에게 보내기 채널 (단일 사용자)
+- [ ] 카카오 알림톡 / 앱 푸시 채널 (다중 사용자)
 - [ ] 대시보드: 지난 승인 내역, 자동 승인 규칙(금액 ≤ N원이면 자동 OK)
 - [ ] 사용자별 API 키 발급 UI (현재: 환경변수)
 - [ ] React Native 앱 (잠금화면 알림에서 바로 승인)
